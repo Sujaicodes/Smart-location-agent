@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart Location Intelligence Agent</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0a0e0f; --surface: #111618; --card: #161d1f; --border: #1f2c2f;
+      --accent: #2adf8f; --accent2: #1ab3ff; --text: #e8f0ef; --muted: #6b8a85;
+      --danger: #ff5f5f; --warn: #ffb347;
+    }
+    body { background: var(--bg); color: var(--text); font-family: 'DM Mono', monospace; min-height: 100vh; display: flex; flex-direction: column; overflow-x: hidden; }
+    body::before { content: ''; position: fixed; inset: 0; background-image: linear-gradient(rgba(42,223,143,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(42,223,143,0.03) 1px, transparent 1px); background-size: 40px 40px; pointer-events: none; z-index: 0; }
+
+    header { position: relative; z-index: 1; padding: 2.5rem 2rem 1.5rem; text-align: center; border-bottom: 1px solid var(--border); }
+    .badge { display: inline-block; font-size: 0.65rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--accent); border: 1px solid var(--accent); padding: 0.25rem 0.75rem; border-radius: 2px; margin-bottom: 1rem; animation: pulse-border 3s ease-in-out infinite; }
+    @keyframes pulse-border { 0%,100%{box-shadow:0 0 0 0 rgba(42,223,143,0.3)}50%{box-shadow:0 0 12px 2px rgba(42,223,143,0.15)} }
+    h1 { font-family: 'Playfair Display', serif; font-size: clamp(1.8rem,4vw,3rem); font-weight: 700; line-height: 1.1; letter-spacing: -0.02em; margin-bottom: 0.5rem; }
+    h1 span { font-style: italic; color: var(--accent); }
+    .subtitle { color: var(--muted); font-size: 0.75rem; letter-spacing: 0.05em; max-width: 480px; margin: 0 auto 1rem; line-height: 1.7; }
+    .pipeline { display: flex; align-items: center; justify-content: center; gap: 0.4rem; flex-wrap: wrap; }
+    .pill { font-size: 0.55rem; letter-spacing: 0.1em; text-transform: uppercase; padding: 0.15rem 0.5rem; border-radius: 2px; background: var(--card); border: 1px solid var(--border); color: var(--muted); }
+    .pill.active { color: var(--accent2); border-color: var(--accent2); }
+    .arrow { color: var(--border); font-size: 0.6rem; }
+
+    /* Nav tabs */
+    .tabs { position: relative; z-index: 1; display: flex; border-bottom: 1px solid var(--border); background: var(--surface); }
+    .tab { flex: 1; padding: 0.75rem; text-align: center; font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s; }
+    .tab:hover { color: var(--text); }
+    .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+    /* Panels */
+    .panel { display: none; position: relative; z-index: 1; }
+    .panel.active { display: block; }
+
+    main { position: relative; z-index: 1; flex: 1; max-width: 860px; width: 100%; margin: 0 auto; padding: 2rem 1.5rem; display: flex; flex-direction: column; gap: 1.25rem; }
+
+    /* Input */
+    .input-block { background: var(--card); border: 1px solid var(--border); border-radius: 4px; overflow: hidden; transition: border-color 0.2s; }
+    .input-block:focus-within { border-color: var(--accent); box-shadow: 0 0 20px rgba(42,223,143,0.08); }
+    .input-label { display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1.25rem 0; font-size: 0.6rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted); }
+    .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: blink 2s ease-in-out infinite; }
+    @keyframes blink { 0%,100%{opacity:1}50%{opacity:0.2} }
+    textarea { width: 100%; background: transparent; border: none; outline: none; color: var(--text); font-family: 'DM Mono', monospace; font-size: 0.9rem; line-height: 1.6; padding: 0.75rem 1.25rem 1rem; resize: none; min-height: 80px; }
+    textarea::placeholder { color: var(--muted); }
+    .input-footer { display: flex; align-items: center; justify-content: space-between; padding: 0.6rem 1.25rem; border-top: 1px solid var(--border); background: var(--surface); flex-wrap: wrap; gap: 0.5rem; }
+    .examples { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+    .example-btn { font-size: 0.6rem; color: var(--muted); background: none; border: 1px solid var(--border); padding: 0.2rem 0.5rem; border-radius: 2px; cursor: pointer; font-family: 'DM Mono', monospace; transition: all 0.15s; }
+    .example-btn:hover { color: var(--accent2); border-color: var(--accent2); }
+    .send-btn { display: flex; align-items: center; gap: 0.5rem; background: var(--accent); color: #0a0e0f; border: none; padding: 0.5rem 1.25rem; font-family: 'DM Mono', monospace; font-size: 0.75rem; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; border-radius: 2px; cursor: pointer; transition: all 0.2s; }
+    .send-btn:hover { background: #1fc47a; transform: translateY(-1px); }
+    .send-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+    /* Loading */
+    .loading-block { display: none; background: var(--card); border: 1px solid var(--border); border-radius: 4px; padding: 1.5rem 1.25rem; }
+    .loading-block.visible { display: block; animation: fadeIn 0.3s ease; }
+    .pipeline-steps { display: flex; flex-direction: column; gap: 0.6rem; max-width: 320px; margin: 0 auto; }
+    .step { display: flex; align-items: center; gap: 0.75rem; font-size: 0.7rem; color: var(--muted); transition: color 0.3s; }
+    .step.active { color: var(--accent); }
+    .step.done { opacity: 0.35; }
+    .step-icon { width: 18px; height: 18px; border: 1px solid var(--border); border-radius: 2px; display: flex; align-items: center; justify-content: center; font-size: 0.55rem; flex-shrink: 0; }
+    .step.active .step-icon { border-color: var(--accent); color: var(--accent); animation: spin 1s linear infinite; }
+    @keyframes spin { from{transform:rotate(0deg)}to{transform:rotate(360deg)} }
+
+    /* Response */
+    .response-block { display: none; background: var(--card); border: 1px solid var(--border); border-radius: 4px; overflow: hidden; }
+    .response-block.visible { display: block; animation: fadeIn 0.4s ease; }
+    @keyframes fadeIn { from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)} }
+    .response-header { display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 1.25rem; border-bottom: 1px solid var(--border); background: var(--surface); }
+    .response-title { font-size: 0.6rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--accent); }
+    .response-actions { display: flex; gap: 0.5rem; align-items: center; }
+    .response-meta { font-size: 0.6rem; color: var(--muted); }
+    .copy-btn { font-size: 0.6rem; letter-spacing: 0.08em; text-transform: uppercase; background: none; border: 1px solid var(--border); color: var(--muted); padding: 0.2rem 0.6rem; border-radius: 2px; cursor: pointer; font-family: 'DM Mono', monospace; transition: all 0.15s; }
+    .copy-btn:hover { color: var(--accent); border-color: var(--accent); }
+    .copy-btn.copied { color: var(--accent); border-color: var(--accent); }
+    .share-btn { font-size: 0.6rem; letter-spacing: 0.08em; text-transform: uppercase; background: none; border: 1px solid var(--border); color: var(--muted); padding: 0.2rem 0.6rem; border-radius: 2px; cursor: pointer; font-family: 'DM Mono', monospace; transition: all 0.15s; }
+    .share-btn:hover { color: var(--accent2); border-color: var(--accent2); }
+    .response-body { padding: 1.5rem 1.25rem; font-family: 'Playfair Display', serif; font-size: 0.95rem; line-height: 1.85; color: var(--text); white-space: pre-wrap; }
+
+    /* Error */
+    .error-block { display: none; background: var(--card); border: 1px solid var(--danger); border-radius: 4px; padding: 1rem 1.25rem; font-size: 0.8rem; color: var(--danger); }
+    .error-block.visible { display: block; animation: fadeIn 0.3s ease; }
+
+    /* Map */
+    #map { width: 100%; height: 480px; border-radius: 4px; border: 1px solid var(--border); z-index: 1; }
+    .map-panel main { padding-top: 1.5rem; }
+    .map-legend { display: flex; gap: 1rem; flex-wrap: wrap; font-size: 0.65rem; color: var(--muted); letter-spacing: 0.05em; }
+    .legend-item { display: flex; align-items: center; gap: 0.35rem; }
+    .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+    /* Animal search */
+    .search-input-wrap { position: relative; }
+    .search-input { width: 100%; background: var(--card); border: 1px solid var(--border); border-radius: 4px; color: var(--text); font-family: 'DM Mono', monospace; font-size: 0.85rem; padding: 0.75rem 1.25rem; outline: none; transition: border-color 0.2s; }
+    .search-input:focus { border-color: var(--accent); }
+    .search-input::placeholder { color: var(--muted); }
+    .filters { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+    .filter-btn { font-size: 0.6rem; letter-spacing: 0.08em; text-transform: uppercase; background: none; border: 1px solid var(--border); color: var(--muted); padding: 0.25rem 0.75rem; border-radius: 2px; cursor: pointer; font-family: 'DM Mono', monospace; transition: all 0.15s; }
+    .filter-btn:hover, .filter-btn.active { color: var(--accent); border-color: var(--accent); background: rgba(42,223,143,0.05); }
+    .animal-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 0.75rem; }
+    .animal-card { background: var(--card); border: 1px solid var(--border); border-radius: 4px; padding: 1rem; cursor: pointer; transition: all 0.2s; }
+    .animal-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+    .animal-name { font-family: 'Playfair Display', serif; font-size: 0.95rem; margin-bottom: 0.25rem; }
+    .animal-zoo { font-size: 0.6rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent2); margin-bottom: 0.4rem; }
+    .animal-desc { font-size: 0.7rem; color: var(--muted); line-height: 1.5; }
+    .animal-tags { display: flex; gap: 0.3rem; flex-wrap: wrap; margin-top: 0.5rem; }
+    .tag { font-size: 0.55rem; letter-spacing: 0.05em; padding: 0.1rem 0.4rem; border-radius: 2px; background: var(--surface); border: 1px solid var(--border); color: var(--muted); }
+    .results-count { font-size: 0.65rem; color: var(--muted); letter-spacing: 0.05em; }
+
+    footer { position: relative; z-index: 1; text-align: center; padding: 1.25rem; border-top: 1px solid var(--border); font-size: 0.6rem; letter-spacing: 0.1em; color: var(--muted); text-transform: uppercase; }
+    footer span { color: var(--accent); }
+
+    /* Share toast */
+    .toast { position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--accent); color: #0a0e0f; font-size: 0.7rem; font-family: 'DM Mono', monospace; letter-spacing: 0.1em; text-transform: uppercase; padding: 0.6rem 1.5rem; border-radius: 2px; opacity: 0; transition: all 0.3s; z-index: 999; pointer-events: none; }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="badge">⬡ MCP · Gemini · OpenStreetMap · Wikipedia</div>
+  <h1>Smart Location<br/><span>Intelligence</span> Agent</h1>
+  <p class="subtitle">AI-powered tour guide across 7 world-class zoos. Ask anything — powered by a live MCP pipeline.</p>
+  <div class="pipeline">
+    <span class="pill active">Query</span><span class="arrow">→</span>
+    <span class="pill active">Gemini</span><span class="arrow">→</span>
+    <span class="pill active">MCP</span><span class="arrow">→</span>
+    <span class="pill active">SQLite</span><span class="arrow">→</span>
+    <span class="pill active">Wikipedia</span><span class="arrow">→</span>
+    <span class="pill active">Maps</span><span class="arrow">→</span>
+    <span class="pill active">Narrative</span>
+  </div>
+</header>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('ask')">⬡ Ask Agent</div>
+  <div class="tab" onclick="switchTab('map')">◎ Map View</div>
+  <div class="tab" onclick="switchTab('search')">⊞ Animal Search</div>
+</div>
+
+<!-- ASK PANEL -->
+<div class="panel active" id="panel-ask">
+  <main>
+    <div class="input-block">
+      <div class="input-label"><div class="dot"></div> Query Input</div>
+      <textarea id="queryInput" placeholder="Tell me about animals at the San Diego Zoo..." rows="3"></textarea>
+      <div class="input-footer">
+        <div class="examples">
+          <button class="example-btn" onclick="setQuery('Tell me about animals at the San Diego Zoo')">San Diego Zoo</button>
+          <button class="example-btn" onclick="setQuery('What can I see at London Zoo?')">London Zoo</button>
+          <button class="example-btn" onclick="setQuery('Tell me about endangered species at Singapore Zoo')">Singapore Zoo</button>
+          <button class="example-btn" onclick="setQuery('What animals are at the Smithsonian National Zoo?')">Smithsonian Zoo</button>
+        </div>
+        <button class="send-btn" id="sendBtn" onclick="runQuery()">⟶ Ask</button>
+      </div>
+    </div>
+
+    <div class="loading-block" id="loadingBlock">
+      <div class="pipeline-steps">
+        <div class="step" id="step1"><div class="step-icon">◎</div> Parsing intent with Gemini</div>
+        <div class="step" id="step2"><div class="step-icon">◎</div> Querying MCP Server → SQLite</div>
+        <div class="step" id="step3"><div class="step-icon">◎</div> Geocoding via OpenStreetMap</div>
+        <div class="step" id="step4"><div class="step-icon">◎</div> Enriching from Wikipedia</div>
+        <div class="step" id="step5"><div class="step-icon">◎</div> Synthesizing narrative</div>
+      </div>
+    </div>
+
+    <div class="error-block" id="errorBlock"></div>
+
+    <div class="response-block" id="responseBlock">
+      <div class="response-header">
+        <span class="response-title">⬡ Agent Response</span>
+        <div class="response-actions">
+          <span class="response-meta" id="responseMeta"></span>
+          <button class="copy-btn" id="copyBtn" onclick="copyResponse()">Copy</button>
+          <button class="share-btn" onclick="shareResponse()">Share ↗</button>
+        </div>
+      </div>
+      <div class="response-body" id="responseBody"></div>
+    </div>
+  </main>
+</div>
+
+<!-- MAP PANEL -->
+<div class="panel map-panel" id="panel-map">
+  <main>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
+      <span style="font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);">⬡ Zoo Locations Worldwide</span>
+      <div class="map-legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#2adf8f"></div> Zoo</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#1ab3ff"></div> Animal</div>
+      </div>
+    </div>
+    <div id="map"></div>
+    <p style="font-size:0.65rem;color:var(--muted);margin-top:0.75rem;text-align:center;">Click a marker to learn more · Click "Ask Agent" to get a full tour guide narrative</p>
+  </main>
+</div>
+
+<!-- SEARCH PANEL -->
+<div class="panel" id="panel-search">
+  <main>
+    <input class="search-input" id="searchInput" placeholder="Search animals, zoos, habitats..." oninput="filterAnimals()" />
+    <div class="filters" id="zooFilters"></div>
+    <div class="results-count" id="resultsCount"></div>
+    <div class="animal-grid" id="animalGrid"></div>
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+<footer>Built with <span>MCP · Gemini · Railway</span> · 7 Zoos · 35 Animals</footer>
+
+<script>
+// ── Data ─────────────────────────────────────────────────────────────
+const ZOO_COORDS = {
+  "Central Park Zoo":        [40.7678, -73.9718],
+  "San Diego Zoo":           [32.7353, -117.1490],
+  "London Zoo":              [51.5353, -0.1561],
+  "Singapore Zoo":           [1.4043,  103.7930],
+  "Toronto Zoo":             [43.8197, -79.1847],
+  "Smithsonian National Zoo":[38.9297, -77.0513],
+  "Melbourne Zoo":           [-37.7847, 144.9519],
+};
+
+const ANIMALS = [
+  {name:"Snow Leopard",zoo:"Central Park Zoo",type:"animal",desc:"Endangered big cat from Central Asia",zone:"Snow Cats Exhibit",tags:["endangered","big cat","predator"]},
+  {name:"Polar Bear",zoo:"Central Park Zoo",type:"animal",desc:"Arctic marine mammal and apex predator",zone:"Polar Zone",tags:["endangered","marine","arctic"]},
+  {name:"Gentoo Penguin",zoo:"Central Park Zoo",type:"animal",desc:"Fastest underwater swimming penguin species",zone:"Discovery Zone",tags:["bird","aquatic"]},
+  {name:"Red Panda",zoo:"Central Park Zoo",type:"animal",desc:"Small arboreal mammal native to the eastern Himalayas",zone:"Asia Wing",tags:["endangered","arboreal"]},
+  {name:"Giant Panda",zoo:"San Diego Zoo",type:"animal",desc:"Iconic black-and-white bear native to China",zone:"Panda Trek",tags:["endangered","bear","china"]},
+  {name:"Koala",zoo:"San Diego Zoo",type:"animal",desc:"Marsupial native to Australia, feeds on eucalyptus",zone:"Outback Zone",tags:["marsupial","australia"]},
+  {name:"California Condor",zoo:"San Diego Zoo",type:"animal",desc:"Largest North American land bird, critically endangered",zone:"Condor Ridge",tags:["endangered","bird"]},
+  {name:"African Elephant",zoo:"San Diego Zoo",type:"animal",desc:"World's largest land animal with complex social structures",zone:"Elephant Odyssey",tags:["endangered","africa","megafauna"]},
+  {name:"Western Lowland Gorilla",zoo:"London Zoo",type:"animal",desc:"Critically endangered great ape from Central Africa",zone:"Gorilla Kingdom",tags:["endangered","primate","africa"]},
+  {name:"Sumatran Tiger",zoo:"London Zoo",type:"animal",desc:"Critically endangered tiger subspecies native to Sumatra",zone:"Tiger Territory",tags:["endangered","big cat","asia"]},
+  {name:"Humboldt Penguin",zoo:"London Zoo",type:"animal",desc:"South American penguin threatened by climate change",zone:"Penguin Beach",tags:["bird","aquatic","south america"]},
+  {name:"Okapi",zoo:"London Zoo",type:"animal",desc:"Elusive forest giraffe from Congo, discovered in 1901",zone:"Into Africa",tags:["endangered","africa","rare"]},
+  {name:"White Tiger",zoo:"Singapore Zoo",type:"animal",desc:"Rare white-coated Bengal tiger",zone:"Fragile Forest",tags:["big cat","rare","asia"]},
+  {name:"Orangutan",zoo:"Singapore Zoo",type:"animal",desc:"Critically endangered great ape from Borneo and Sumatra",zone:"Jungle Breakfast",tags:["endangered","primate","borneo"]},
+  {name:"Pygmy Hippo",zoo:"Singapore Zoo",type:"animal",desc:"Rare and shy smaller relative of the common hippopotamus",zone:"African Zone",tags:["endangered","africa","rare"]},
+  {name:"Komodo Dragon",zoo:"Singapore Zoo",type:"animal",desc:"World's largest living lizard, native to Indonesia",zone:"Reptile Garden",tags:["reptile","endangered","indonesia"]},
+  {name:"Giant Panda",zoo:"Toronto Zoo",type:"animal",desc:"Beloved black-and-white bear on loan from China",zone:"Panda House",tags:["endangered","bear","china"]},
+  {name:"Polar Bear",zoo:"Toronto Zoo",type:"animal",desc:"Arctic apex predator, iconic Toronto Zoo resident",zone:"Canadian Domain",tags:["endangered","arctic","canada"]},
+  {name:"Snow Leopard",zoo:"Toronto Zoo",type:"animal",desc:"Elusive mountain cat from Central Asia highlands",zone:"Indo-Malaya",tags:["endangered","big cat","asia"]},
+  {name:"African Lion",zoo:"Toronto Zoo",type:"animal",desc:"King of the savanna living in family prides",zone:"African Savanna",tags:["big cat","africa","vulnerable"]},
+  {name:"Giant Panda",zoo:"Smithsonian National Zoo",type:"animal",desc:"Star attraction, part of global conservation breeding program",zone:"Panda Habitat",tags:["endangered","bear","china"]},
+  {name:"Clouded Leopard",zoo:"Smithsonian National Zoo",type:"animal",desc:"Mysterious medium-sized wild cat with cloud-like markings",zone:"Asia Trail",tags:["endangered","big cat","asia","rare"]},
+  {name:"Naked Mole Rat",zoo:"Smithsonian National Zoo",type:"animal",desc:"Extraordinary eusocial mammal immune to cancer and pain",zone:"Small Mammal House",tags:["rare","mammal","africa","unique"]},
+  {name:"American Bison",zoo:"Smithsonian National Zoo",type:"animal",desc:"Iconic symbol of the American West, once nearly extinct",zone:"American Trail",tags:["north america","conservation"]},
+  {name:"Sumatran Orangutan",zoo:"Melbourne Zoo",type:"animal",desc:"Critically endangered great ape from Sumatra",zone:"Orangutan Sanctuary",tags:["endangered","primate","sumatra"]},
+  {name:"Gorilla",zoo:"Melbourne Zoo",type:"animal",desc:"Western lowland gorilla in a lush rainforest habitat",zone:"Gorilla Rainforest",tags:["endangered","primate","africa"]},
+  {name:"Snow Leopard",zoo:"Melbourne Zoo",type:"animal",desc:"Rare mountain predator from the Himalayas",zone:"Asian Zone",tags:["endangered","big cat","himalayan"]},
+  {name:"Platypus",zoo:"Melbourne Zoo",type:"animal",desc:"One of Australia's most unique egg-laying mammals",zone:"Australian Zone",tags:["australia","unique","mammal","monotreme"]},
+];
+
+// ── Tab switching ─────────────────────────────────────────────────────
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', ['ask','map','search'][i] === tab));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-' + tab).classList.add('active');
+  if (tab === 'map') initMap();
+  if (tab === 'search') initSearch();
+}
+
+// ── Ask Agent ─────────────────────────────────────────────────────────
+function setQuery(q) { document.getElementById('queryInput').value = q; }
+
+function setStep(n) {
+  for (let i = 1; i <= 5; i++) {
+    const el = document.getElementById('step' + i);
+    el.classList.remove('active','done');
+    if (i < n) el.classList.add('done');
+    if (i === n) el.classList.add('active');
+  }
+}
+
+let lastResponse = '';
+
+async function runQuery() {
+  const query = document.getElementById('queryInput').value.trim();
+  if (!query) return;
+  const sendBtn = document.getElementById('sendBtn');
+  const loadingBlock = document.getElementById('loadingBlock');
+  const responseBlock = document.getElementById('responseBlock');
+  const errorBlock = document.getElementById('errorBlock');
+  sendBtn.disabled = true;
+  responseBlock.classList.remove('visible');
+  errorBlock.classList.remove('visible');
+  loadingBlock.classList.add('visible');
+  [0,800,1600,2400,3200].forEach((t,i) => setTimeout(() => setStep(i+1), t));
+  const startTime = Date.now();
+  try {
+    const res = await fetch('/query', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({query}),
+    });
+    const data = await res.json();
+    const elapsed = ((Date.now() - startTime)/1000).toFixed(1);
+    loadingBlock.classList.remove('visible');
+    if (data.success) {
+      lastResponse = data.response;
+      document.getElementById('responseBody').textContent = data.response;
+      document.getElementById('responseMeta').textContent = elapsed + 's';
+      document.getElementById('copyBtn').textContent = 'Copy';
+      document.getElementById('copyBtn').classList.remove('copied');
+      responseBlock.classList.add('visible');
+    } else {
+      errorBlock.textContent = 'Error: ' + (data.error || 'Unknown error');
+      errorBlock.classList.add('visible');
+    }
+  } catch (err) {
+    loadingBlock.classList.remove('visible');
+    errorBlock.textContent = 'Connection error: ' + err.message;
+    errorBlock.classList.add('visible');
+  }
+  sendBtn.disabled = false;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('queryInput').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); runQuery(); }
+  });
+});
+
+// ── Copy & Share ──────────────────────────────────────────────────────
+function copyResponse() {
+  if (!lastResponse) return;
+  navigator.clipboard.writeText(lastResponse).then(() => {
+    const btn = document.getElementById('copyBtn');
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+function shareResponse() {
+  if (!lastResponse) return;
+  const query = document.getElementById('queryInput').value.trim();
+  const text = `🗺️ Smart Location Intelligence Agent\n\nQ: ${query}\n\n${lastResponse}\n\n${window.location.href}`;
+  if (navigator.share) {
+    navigator.share({ title: 'Smart Location Agent', text });
+  } else {
+    navigator.clipboard.writeText(text).then(() => showToast('Copied to clipboard!'));
+  }
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ── Map ───────────────────────────────────────────────────────────────
+let mapInitialized = false;
+let leafletMap = null;
+
+function initMap() {
+  if (mapInitialized) return;
+  mapInitialized = true;
+  setTimeout(() => {
+    leafletMap = L.map('map', { zoomControl: true }).setView([20, 0], 2);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      attribution: '© OpenStreetMap © CARTO', maxZoom: 18
+    }).addTo(leafletMap);
+
+    const zooIcon = L.divIcon({ className:'', html:'<div style="width:12px;height:12px;border-radius:50%;background:#2adf8f;border:2px solid #0a0e0f;box-shadow:0 0 8px rgba(42,223,143,0.6)"></div>', iconSize:[12,12], iconAnchor:[6,6] });
+    const animalIcon = L.divIcon({ className:'', html:'<div style="width:8px;height:8px;border-radius:50%;background:#1ab3ff;border:1px solid #0a0e0f;opacity:0.8"></div>', iconSize:[8,8], iconAnchor:[4,4] });
+
+    Object.entries(ZOO_COORDS).forEach(([zoo, coords]) => {
+      const animals = ANIMALS.filter(a => a.zoo === zoo);
+      const popupContent = `
+        <div style="font-family:'DM Mono',monospace;font-size:11px;color:#e8f0ef;background:#161d1f;padding:10px;border-radius:4px;min-width:180px;">
+          <div style="color:#2adf8f;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:6px;">⬡ ${zoo}</div>
+          <div style="color:#6b8a85;margin-bottom:8px;">${animals.length} residents</div>
+          ${animals.slice(0,4).map(a => `<div style="margin-bottom:3px;">· ${a.name}</div>`).join('')}
+          ${animals.length > 4 ? `<div style="color:#6b8a85">+ ${animals.length-4} more</div>` : ''}
+          <button onclick="askAboutZoo('${zoo}')" style="margin-top:8px;width:100%;background:#2adf8f;color:#0a0e0f;border:none;padding:4px 8px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.08em;text-transform:uppercase;border-radius:2px;cursor:pointer;">Ask Agent →</button>
+        </div>`;
+      L.marker(coords, {icon: zooIcon}).addTo(leafletMap).bindPopup(popupContent, {className:'dark-popup',maxWidth:220});
+    });
+  }, 100);
+}
+
+function askAboutZoo(zoo) {
+  switchTab('ask');
+  setQuery(`Tell me about animals at the ${zoo}`);
+  if (leafletMap) leafletMap.closePopup();
+}
+
+// ── Animal Search ─────────────────────────────────────────────────────
+let activeZooFilter = null;
+let searchInitialized = false;
+
+function initSearch() {
+  if (searchInitialized) return;
+  searchInitialized = true;
+  const zoos = [...new Set(ANIMALS.map(a => a.zoo))];
+  const filtersEl = document.getElementById('zooFilters');
+  filtersEl.innerHTML = `<button class="filter-btn active" onclick="setZooFilter(null, this)">All Zoos</button>` +
+    zoos.map(z => `<button class="filter-btn" onclick="setZooFilter('${z}', this)">${z.replace(' Zoo','').replace(' National','')}</button>`).join('');
+  renderAnimals(ANIMALS);
+}
+
+function setZooFilter(zoo, btn) {
+  activeZooFilter = zoo;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  filterAnimals();
+}
+
+function filterAnimals() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  let results = ANIMALS;
+  if (activeZooFilter) results = results.filter(a => a.zoo === activeZooFilter);
+  if (q) results = results.filter(a =>
+    a.name.toLowerCase().includes(q) ||
+    a.zoo.toLowerCase().includes(q) ||
+    a.desc.toLowerCase().includes(q) ||
+    a.tags.some(t => t.includes(q))
+  );
+  renderAnimals(results);
+}
+
+function renderAnimals(animals) {
+  const grid = document.getElementById('animalGrid');
+  document.getElementById('resultsCount').textContent = `${animals.length} result${animals.length !== 1 ? 's' : ''}`;
+  grid.innerHTML = animals.map(a => `
+    <div class="animal-card" onclick="askAboutAnimal('${a.name}', '${a.zoo}')">
+      <div class="animal-name">${a.name}</div>
+      <div class="animal-zoo">${a.zoo}</div>
+      <div class="animal-desc">${a.desc}</div>
+      <div class="animal-tags">${a.tags.map(t => `<span class="tag">${t}</span>`).join('')}</div>
+    </div>`).join('');
+}
+
+function askAboutAnimal(name, zoo) {
+  switchTab('ask');
+  setQuery(`Tell me about the ${name} at the ${zoo}`);
+}
+</script>
+</body>
+</html>

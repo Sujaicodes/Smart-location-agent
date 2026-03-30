@@ -1,0 +1,6 @@
+fastapi==0.111.0
+uvicorn[standard]==0.29.0
+pydantic==2.7.1
+# Uncomment for production BigQuery access:
+# google-cloud-bigquery==3.21.0
+# google-auth==2.29.0
