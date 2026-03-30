@@ -1,14 +1,17 @@
-```
+<div align="center">
+
+<pre>
 ███████╗██╗     ██╗ █████╗
 ██╔════╝██║     ██║██╔══██╗
 ███████╗██║     ██║███████║
 ╚════██║██║     ██║██╔══██║
 ███████║███████╗██║██║  ██║
 ╚══════╝╚══════╝╚═╝╚═╝  ╚═╝
-Smart Location Intelligence Agent
-```
 
-<div align="center">
+Smart Location Intelligence Agent
+</pre>
+
+</div>
 
 [![Live Demo](https://img.shields.io/badge/⬡_Live_Demo-Railway-00ff88?style=for-the-badge&logoColor=white)](https://luminous-courage-production-7650.up.railway.app)
 [![MCP Server](https://img.shields.io/badge/◎_MCP_Server-Online-00b4ff?style=for-the-badge)](https://smart-location-agent-v2-production.up.railway.app/health)
